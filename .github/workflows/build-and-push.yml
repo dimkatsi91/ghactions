@@ -1,0 +1,56 @@
+name: Build static site
+
+# on: [push, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
+
+env:
+  IMAGE_PATH: ${{ secrets.DOCKER_USERNAME }}/test-site
+  IMAGE_TAG: "v0.0.1"
+
+jobs:
+
+  docker:
+    # Specify where that job will be run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repo
+        # uses makes use of an Action
+        uses: actions/checkout@v3
+
+      - name: Docker Login
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Image
+        run: |
+          echo -e "Building image .. \n"
+          docker build -f workflow-premier/Dockerfile -t test-site:${IMAGE_TAG} .
+      
+      - name: Push Image
+        run: |
+          docker tag test-site:${IMAGE_TAG} ${IMAGE_PATH}:${IMAGE_TAG}
+          docker push ${IMAGE_PATH}:${IMAGE_TAG}
+          if [[ $? -eq 0 ]]; then
+            echo -e "INFO:\n\tBuilt and Pushed Image: ${IMAGE_PATH}:${IMAGE_TAG} \n" >> results_info.txt
+          fi
+      
+      - name: Upload Result Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: result-files
+          path: |
+            results_info.txt
+
+  test_site:
+
+    needs: docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test site via curl
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker run -p 8089:80 -d ${IMAGE_PATH}:${IMAGE_TAG}
+          curl localhost:8089 -vv
