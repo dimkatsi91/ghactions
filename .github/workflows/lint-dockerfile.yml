@@ -1,0 +1,27 @@
+name: Lint Dockerfile
+
+on:
+  push:
+    paths:
+      - workflow-premier/Dockerfile
+  pull_request:
+
+env:
+  # HADO_VERSION: "v2.12.0"
+  HADO_FULLPATH: "https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64"
+
+jobs:
+  linter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repo
+        # uses makes use of an Action
+        uses: actions/checkout@v3
+      - name: Download hadolint
+        run: |
+          wget ${HADO_FULLPATH} -O hadolint && chmod +x hadolint
+          ./hadolint --version
+          ./hadolint --help
+      - name: Lint Dockerfile
+        run: | 
+          ./hadolint workflow-premier/Dockerfile
